@@ -58,8 +58,25 @@ get_letsencrypt_ssl() {
     local domain="$1"
     local email="$2"
 
-    sudo apt update
-    sudo apt install -y certbot
+    # Configure a basic Nginx server block for the domain
+    cat <<EOF | sudo tee /etc/nginx/sites-available/$domain
+server {
+    listen 80;
+    listen [::]:80;
+    server_name $domain;
+    root /var/www/html; # Or your webroot directory
+
+    index index.html;
+
+    location / {
+        try_files \$uri \$uri/ =404;
+    }
+}
+EOF
+
+    sudo ln -s /etc/nginx/sites-available/$domain /etc/nginx/sites-enabled/
+    sudo nginx -t # Test Nginx configuration
+    sudo systemctl restart nginx
 
     if systemctl is-active --quiet xray; then
         sudo systemctl stop xray
@@ -68,14 +85,13 @@ get_letsencrypt_ssl() {
         xray_was_running=false
     fi
 
-    if ! certbot certonly --standalone -d "$domain" --email "$email" --agree-tos --no-eff-email --non-interactive --force-renewal; then
-        echo "Error obtaining Let's Encrypt certificate. Please check your domain and DNS settings. Make sure port 80 is open."
+    if ! certbot --nginx -d "$domain" --email "$email" --agree-tos --no-eff-email --non-interactive --force-renewal; then
+        echo "Error obtaining Let's Encrypt certificate. Please check your Nginx configuration and DNS settings."
         if [[ "$xray_was_running" == true ]]; then
             sudo systemctl start xray
         fi
         return 1
     fi
-
     if [[ "$xray_was_running" == true ]]; then
         sudo systemctl start xray
     fi
@@ -85,7 +101,7 @@ get_letsencrypt_ssl() {
 # Function to install dependencies
 install_dependencies() {
     sudo apt update
-    sudo apt install -y uuid-runtime jq certbot
+    sudo apt install -y uuid-runtime jq ca-certificates nginx certbot python3-certbot-nginx
     if [[ "$use_dns_auth" == "true" ]]; then
         sudo apt install -y python3-certbot-dns-cloudflare
     fi
