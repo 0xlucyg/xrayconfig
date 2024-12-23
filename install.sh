@@ -2,6 +2,9 @@
 
 # Configuration
 config_url="https://raw.githubusercontent.com/0xlucyg/xrayconfig/refs/heads/main/xray/config.json"
+domain=""
+email=""
+password=""
 
 # Function to generate a random UUID
 generate_uuid() {
@@ -31,14 +34,11 @@ is_valid_email() {
 # Function to get user input for DOMAIN, EMAIL, and PASSWORD
 get_user_input() {
     local valid_input=false
-    local domain
-    local email
-    local password
 
     while ! $valid_input; do
         read -p "Enter DOMAIN: " domain
         read -p "Enter EMAIL: " email
-        read -s -p "Enter Trojan PASSWORD: " password
+        read -p "Enter Trojan PASSWORD: " password
         echo ""
 
         if is_valid_domain "$domain" && is_valid_email "$email" && [[ -n "$password" ]]; then
@@ -50,7 +50,7 @@ get_user_input() {
 
     echo "DOMAIN: $domain"
     echo "EMAIL: $email"
-    echo "PASSWORD: $password" #Echo Password after input for sed command
+    echo "PASSWORD: $password"
 }
 
 # Function to obtain SSL certificates from Let's Encrypt using standalone method
