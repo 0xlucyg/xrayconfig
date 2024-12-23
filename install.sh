@@ -68,35 +68,21 @@ get_letsencrypt_ssl() {
     fi
 
     # Create a new default.conf
-    cat <<EOF | sudo tee /etc/nginx/sites-available/default.conf
+    cat <<EOF | sudo tee /etc/nginx/sites-enabled/default.conf
 server {
-        listen 80 default_server;
-        listen [::]:80 default_server;
+        listen 127.0.0.1:8080 default_server;
+        listen [::1]:8080 default_server;
+
         server_name _;
-        root /var/www/html;
-        index index.html;
 
         location / {
-                try_files \$uri \$uri/ =404;
+                auth_basic "Administrator";
+                auth_basic_user_file /dev/null;
         }
 }
 EOF
 
-    sudo ln -s /etc/nginx/sites-available/default.conf /etc/nginx/sites-enabled/
-
-    #Create index.html
-    cat <<EOF | sudo tee /var/www/html/index.html
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Welcome to My Server</title>
-</head>
-<body>
-    <h1>Success!</h1>
-    <p>This is a default welcome page.</p>
-</body>
-</html>
-EOF
+    # sudo ln -s /etc/nginx/sites-available/default.conf /etc/nginx/sites-enabled/
 
     sudo nginx -t
     sudo systemctl restart nginx
@@ -195,7 +181,6 @@ main() {
     use_dns_auth="false"
     install_dependencies
     install_xray
-    get_user_input
     configure_xray || return 1
     start_xray_service
     check_xray
