@@ -1,0 +1,156 @@
+{
+	"log": {
+		"loglevel": "info"
+	},
+	"dns": {
+		"servers": [
+			"8.8.8.8",
+			"8.8.4.4",
+			"https://1.1.1.1/dns-query",
+			"1.1.1.1",
+			"1.0.0.1",
+			"127.0.0.1"
+		]
+	},
+	"routing": {
+		"rules": [
+			{
+				"type": "field",
+				"outboundTag": "block",
+				"protocol": ["bittorent"]
+			},
+			{
+				"type": "field",
+				"inboundTag": ["trojan_80", "vless_tls", "vless_ws"],
+				"outboundTag": "direct"
+			},
+			{
+				"type": "field",
+				"outboundTag": "direct",
+				"network": "tcp,udp",
+				"ip": ["0.0.0.0/0", "::/0"]
+			}
+		],
+		"domainStrategy": "AsIs"
+	},
+	"inbounds": [
+		{
+			"port": 443,
+			"protocol": "vless",
+			"tag": "vless_tls",
+			"settings": {
+				"clients": [
+					{
+						"id": "%UUID%",
+						"email": "%EMAIL%",
+						"flow": "xtls-rprx-vision"
+					}
+				],
+				"decryption": "none",
+				"fallbacks": [
+					{
+						"path": "/vless-ws",
+						"dest": "@vless-ws"
+					},
+					{
+						"dest": "8080"
+					}
+				]
+			},
+			"streamSettings": {
+				"network": "tcp",
+				"security": "tls",
+				"tlsSettings": {
+					"alpn": ["http/1.1", "h2"],
+					"certificates": [
+						{
+							"certificateFile": "/etc/letsencrypt/live/%DOMAIN%/fullchain.pem",
+							"keyFile": "/etc/letsencrypt/live/%DOMAIN%/privkey.pem"
+						}
+					]
+				}
+			},
+			"sniffing": {
+				"enabled": true,
+				"destOverride": ["http", "tls"]
+			}
+		},
+		{
+			"listen": "@vless-ws",
+			"protocol": "vless",
+			"tag": "vless_ws",
+			"settings": {
+				"clients": [
+					{
+						"id": "%UUID%",
+						"email": "%EMAIL%"
+					}
+				],
+				"decryption": "none"
+			},
+			"streamSettings": {
+				"network": "ws",
+				"security": "none",
+				"wsSettings": {
+					"path": "/vless-ws"
+				}
+			},
+			"sniffing": {
+				"enabled": true,
+				"destOverride": ["http", "tls"]
+			}
+		},
+		{
+			"port": 80,
+			"protocol": "trojan",
+			"tag": "trojan_80",
+			"settings": {
+				"clients": [
+					{
+						"password": "%PASSWORD%",
+						"email": "%EMAIL%"
+					}
+				]
+			},
+			"streamSettings": {
+				"network": "tcp",
+				"security": "tls",
+				"tlsSettings": {
+					"alpn": ["http/1.1", "h2"],
+					"certificates": [
+						{
+							"certificateFile": "/etc/letsencrypt/live/%DOMAIN%/fullchain.pem",
+							"keyFile": "/etc/letsencrypt/live/%DOMAIN%/privkey.pem"
+						}
+					]
+				}
+			},
+			"sniffing": {
+				"enabled": true,
+				"destOverride": ["http", "tls"]
+			}
+		}
+	],
+	"outbounds": [
+		{
+			"protocol": "socks",
+			"tag": "warp_proxy",
+			"settings": {
+				"servers": [
+					{
+						"address": "127.0.0.1",
+						"port": 1080
+					}
+				]
+			}
+		},
+		{
+			"protocol": "freedom",
+			"tag": "direct"
+		},
+		{
+			"protocol": "blackhole",
+			"tag": "block"
+		}
+	]
+}
