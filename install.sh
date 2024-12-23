@@ -50,6 +50,7 @@ get_user_input() {
 
     echo "DOMAIN: $domain"
     echo "EMAIL: $email"
+    echo "PASSWORD: $password" #Echo Password after input for sed command
 }
 
 # Function to obtain SSL certificates from Let's Encrypt using standalone method
@@ -84,7 +85,7 @@ get_letsencrypt_ssl() {
 # Function to install dependencies
 install_dependencies() {
     sudo apt update
-    sudo apt install -y jq certbot
+    sudo apt install -y uuid-runtime jq certbot
     if [[ "$use_dns_auth" == "true" ]]; then
         sudo apt install -y python3-certbot-dns-cloudflare
     fi
@@ -97,7 +98,7 @@ install_xray() {
     ./install-xray.sh
 }
 
-# Function to create and move configuration file (REVISED)
+# Function to create and move configuration file
 configure_xray() {
     # Download config.json from GitHub raw URL
     curl -L "$config_url" -o config.json
