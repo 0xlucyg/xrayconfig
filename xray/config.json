@@ -133,18 +133,6 @@
 	],
 	"outbounds": [
 		{
-			"protocol": "socks",
-			"tag": "warp_proxy",
-			"settings": {
-				"servers": [
-					{
-						"address": "127.0.0.1",
-						"port": 1080
-					}
-				]
-			}
-		},
-		{
 			"protocol": "freedom",
 			"tag": "direct"
 		},
