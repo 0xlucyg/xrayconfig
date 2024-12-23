@@ -168,9 +168,10 @@ get_config_info() {
 
 # Main function to execute all steps
 main() {
-    use_dns_auth="false" # Set to "true" if using DNS authentication
+    use_dns_auth="false"
     install_dependencies
     install_xray
+    get_user_input
     configure_xray || return 1
     start_xray_service
     check_xray
