@@ -55,27 +55,50 @@ get_user_input() {
 
 # Function to obtain SSL certificates from Let's Encrypt using standalone method
 get_letsencrypt_ssl() {
-    local domain="$1"
-    local email="$2"
+    local domain_param="$1"
+    local email_param="$2"
 
-    # Configure a basic Nginx server block for the domain
-    cat <<EOF | sudo tee /etc/nginx/sites-available/$domain
+    sudo apt update
+    sudo apt install -y nginx certbot python3-certbot-nginx
+
+    # Check if a default config exists and handle it
+    if [[ -f /etc/nginx/sites-enabled/default ]]; then
+        echo "Default Nginx configuration found. Removing..."
+        sudo rm /etc/nginx/sites-enabled/default
+    fi
+
+    # Create a new default.conf
+    cat <<EOF | sudo tee /etc/nginx/sites-available/default.conf
 server {
-    listen 80;
-    listen [::]:80;
-    server_name $domain;
-    root /var/www/html; # Or your webroot directory
+        listen 80 default_server;
+        listen [::]:80 default_server;
+        server_name _;
+        root /var/www/html;
+        index index.html;
 
-    index index.html;
-
-    location / {
-        try_files \$uri \$uri/ =404;
-    }
+        location / {
+                try_files \$uri \$uri/ =404;
+        }
 }
 EOF
 
-    sudo ln -s /etc/nginx/sites-available/$domain /etc/nginx/sites-enabled/
-    sudo nginx -t # Test Nginx configuration
+    sudo ln -s /etc/nginx/sites-available/default.conf /etc/nginx/sites-enabled/
+
+    #Create index.html
+    cat <<EOF | sudo tee /var/www/html/index.html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Welcome to My Server</title>
+</head>
+<body>
+    <h1>Success!</h1>
+    <p>This is a default welcome page.</p>
+</body>
+</html>
+EOF
+
+    sudo nginx -t
     sudo systemctl restart nginx
 
     if systemctl is-active --quiet xray; then
@@ -85,13 +108,14 @@ EOF
         xray_was_running=false
     fi
 
-    if ! certbot --nginx -d "$domain" --email "$email" --agree-tos --no-eff-email --non-interactive --force-renewal; then
+    if ! certbot --nginx -d "$domain_param" --email "$email_param" --agree-tos --no-eff-email --non-interactive --force-renewal; then
         echo "Error obtaining Let's Encrypt certificate. Please check your Nginx configuration and DNS settings."
         if [[ "$xray_was_running" == true ]]; then
             sudo systemctl start xray
         fi
         return 1
     fi
+
     if [[ "$xray_was_running" == true ]]; then
         sudo systemctl start xray
     fi
