@@ -126,7 +126,19 @@ EOF
 setup_ssl() {
     local DOMAIN=$1
     echo "Setting up Let's Encrypt SSL for $DOMAIN..."
+
+    # Stop Nginx temporarily to free port 80
+    echo "Stopping Nginx to free port 80..."
+    sudo systemctl stop nginx
+
+    # Generate SSL certificate using Certbot
+    echo "Generating SSL certificate..."
     sudo certbot certonly --standalone -d $DOMAIN --non-interactive --agree-tos --email admin@$DOMAIN
+
+    # Restart Nginx after obtaining the certificate
+    echo "Restarting Nginx..."
+    sudo systemctl start nginx
+
     echo "SSL certificate generated successfully."
 }
 
