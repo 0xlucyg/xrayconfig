@@ -103,11 +103,21 @@ configure_nginx_websocket() {
   # Use the template and replace the domain, Xray port, and WebSocket path
   sed "s/YOUR_DOMAIN/$DOMAIN/g" $NGINX_TEMPLATE_FILE | \
     sed "s/XRAY_PORT/$XRAY_PORT/g" | \
-    sed "s/WSPATH/$WSPATH/g" > $NGINX_CONFIG_FILE.tmp # Add WebSocket path replacement
+    sed "s/WSPATH/$WSPATH/g" > $NGINX_CONFIG_FILE.tmp
   mv $NGINX_CONFIG_FILE.tmp $NGINX_CONFIG_FILE
 
-  ln -s $NGINX_CONFIG_FILE $NGINX_CONFIG_FILE # Corrected: link to the file itself
-  nginx -t && systemctl reload nginx
+  ln -s $NGINX_CONFIG_FILE $NGINX_CONFIG_FILE
+
+  nginx -t  # Test Nginx configuration
+
+  # Check if Nginx is already running
+  if systemctl is-active --quiet nginx; then
+    echo "Nginx is already running. Restarting..."
+    systemctl restart nginx
+  else
+    echo "Nginx is not running. Starting..."
+    systemctl start nginx
+  fi
 }
 
 
