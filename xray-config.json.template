@@ -1,0 +1,110 @@
+{
+  "inbounds": [
+    {
+      "port": 443,
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          {
+            "id": "$UUID",
+            "flow": "" // No flow for TLS
+          }
+        ],
+        "decryption": "none",
+        "fallbacks": [
+          {
+            "path": "$WEBSOCKET_PATH",
+            "dest": "@vless_ws",
+            "xver": 1
+          },
+          {
+            "dest": 80,
+            "xver": 1
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "tls",
+        "tlsSettings": {
+          "serverName": "$DOMAIN",
+          "alpn": ["h2", "http/1.1"], // ALPN for better performance
+          "certificates": [
+            {
+              "certificateFile": "/etc/letsencrypt/live/$DOMAIN/fullchain.pem",
+              "keyFile": "/etc/letsencrypt/live/$DOMAIN/privkey.pem"
+            }
+          ]
+        }
+      },
+      "sniffing": { // Enable sniffing for better routing
+        "enabled": true,
+        "destOverride": ["http", "tls"]
+      },
+      "tag": "inbound-vless"
+    },
+    {
+      "listen": "@vless_ws",
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          {
+            "id": "$UUID"
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "ws",
+        "wsSettings": {
+          "path": "$WEBSOCKET_PATH"
+        }
+      },
+      "sniffing": { // Enable sniffing for WebSocket
+        "enabled": true,
+        "destOverride": ["http", "tls"]
+      },
+      "tag": "inbound-ws"
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "settings": {},
+      "mux": { // Enable Mux for multiplexing
+        "enabled": true,
+        "concurrency": 8
+      },
+      "streamSettings": {
+        "sockopt": {
+          "tcpFastOpen": true // Enable TCP Fast Open
+        }
+      },
+      "tag": "direct"
+    },
+    {
+      "protocol": "blackhole",
+      "tag": "blocked"
+    }
+  ],
+  "routing": {
+    "domainStrategy": "AsIs", // Use AsIs for efficient routing
+    "rules": [
+      {
+        "type": "field",
+        "inboundTag": ["inbound-vless", "inbound-ws"], // Combined inbound tags
+        "outboundTag": "direct"
+      },
+      {
+        "type": "field",
+        "ip": ["geoip:private"], // Block private IP ranges
+        "outboundTag": "blocked"
+      },
+      {
+        "type": "field",
+        "domain": ["geosite:category-ads"], // Block ads
+        "outboundTag": "blocked"
+      }
+    ]
+  }
+    }
