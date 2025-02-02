@@ -1,5 +1,24 @@
 #!/bin/bash
 
+# Variables
+UUID="dcd099af-57bc-4dbc-b404-79851facfb36"
+WEBSOCKET_PATH="/vless-ws"
+XRAY_CONFIG="/usr/local/etc/xray/config.json"
+NGINX_CONFIG="/etc/nginx/sites-available/xray"
+LOG_FILE="xray-setup.log"
+
+# Redirect output to log file
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+# Function to validate domain name
+validate_domain() {
+    local DOMAIN=$1
+    if [[ ! "$DOMAIN" =~ ^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+        echo "Error: Invalid domain name."
+        exit 1
+    fi
+}
+
 # Function to update the system and install dependencies
 install_dependencies() {
     echo "Updating system and installing dependencies..."
@@ -15,109 +34,14 @@ install_xray() {
     echo "Xray installed successfully."
 }
 
-# Function to configure Xray with VLESS + XTLS and WebSocket on port 443
+# Function to configure Xray
 configure_xray() {
     local DOMAIN=$1
-    echo "Configuring Xray with VLESS + XTLS and WebSocket on port 443..."
+    echo "Configuring Xray with VLESS + TLS and WebSocket on port 443..."
 
-    XRAY_CONFIG="/usr/local/etc/xray/config.json"
-    sudo mkdir -p /usr/local/etc/xray
-    sudo cat > $XRAY_CONFIG <<EOF
-{
-  "inbounds": [
-    {
-      "port": 443,
-      "protocol": "vless",
-      "settings": {
-        "clients": [
-          {
-            "id": "dcd099af-57bc-4dbc-b404-79851facfb36", // Fixed UUID
-            "flow": "xtls-rprx-direct"
-          }
-        ],
-        "decryption": "none",
-        "fallbacks": [
-          {
-            "path": "/vless-ws", // WebSocket path
-            "dest": "@vless_ws", // Unix socket for WebSocket
-            "xver": 1
-          },
-          {
-            "dest": 80,           // Fallback to Nginx for other traffic
-            "xver": 1
-          }
-        ]
-      },
-      "streamSettings": {
-        "network": "tcp",
-        "security": "xtls",
-        "xtlsSettings": {
-          "certificates": [
-            {
-              "certificateFile": "/etc/letsencrypt/live/$DOMAIN/fullchain.pem",
-              "keyFile": "/etc/letsencrypt/live/$DOMAIN/privkey.pem"
-            }
-          ]
-        }
-      },
-      "tag": "inbound-vless" // Tag for this inbound
-    },
-    {
-      "listen": "@vless_ws", // Unix socket listener for WebSocket
-      "protocol": "vless",
-      "settings": {
-        "clients": [
-          {
-            "id": "dcd099af-57bc-4dbc-b404-79851facfb36" // Fixed UUID
-          }
-        ],
-        "decryption": "none"
-      },
-      "streamSettings": {
-        "network": "ws",
-        "wsSettings": {
-          "path": "/vless-ws"
-        }
-      },
-      "tag": "inbound-ws" // Tag for this inbound
-    }
-  ],
-  "outbounds": [
-    {
-      "protocol": "freedom",
-      "tag": "direct" // Outbound for direct traffic
-    },
-    {
-      "protocol": "blackhole",
-      "tag": "blocked" // Outbound for blocked traffic
-    }
-  ],
-  "routing": {
-    "rules": [
-      {
-        "type": "field",
-        "inboundTag": ["inbound-vless"], // Route traffic from "inbound-vless"
-        "outboundTag": "direct"          // to the "direct" outbound
-      },
-      {
-        "type": "field",
-        "inboundTag": ["inbound-ws"],    // Route traffic from "inbound-ws"
-        "outboundTag": "direct"          // to the "direct" outbound
-      },
-      {
-        "type": "field",
-        "ip": ["geoip:private"],         // Block private IP ranges
-        "outboundTag": "blocked"
-      },
-      {
-        "type": "field",
-        "domain": ["geosite:category-ads"], // Block ads
-        "outboundTag": "blocked"
-      }
-    ]
-  }
-}
-EOF
+    # Use a template to generate the Xray configuration
+    export DOMAIN UUID WEBSOCKET_PATH
+    envsubst < xray-config.json.template > "$XRAY_CONFIG"
 
     echo "Xray configuration completed."
 }
@@ -133,7 +57,7 @@ setup_ssl() {
 
     # Generate SSL certificate using Certbot
     echo "Generating SSL certificate..."
-    sudo certbot certonly --standalone -d $DOMAIN --non-interactive --agree-tos --email admin@$DOMAIN
+    sudo certbot certonly --standalone -d "$DOMAIN" --non-interactive --agree-tos --email admin@$DOMAIN
 
     # Restart Nginx after obtaining the certificate
     echo "Restarting Nginx..."
@@ -142,46 +66,18 @@ setup_ssl() {
     echo "SSL certificate generated successfully."
 }
 
-# Function to configure Nginx for WebSocket and masking
+# Function to configure Nginx
 configure_nginx() {
     local DOMAIN=$1
     echo "Configuring Nginx for WebSocket and masking..."
 
-    sudo cat > /etc/nginx/sites-available/xray <<EOF
-server {
-    listen 80;
-    server_name $DOMAIN;
-    return 301 https://\$host\$request_uri;
-}
-
-server {
-    listen 443 ssl;
-    server_name $DOMAIN;
-
-    ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
-
-    location / {
-        return 200 'Welcome to $DOMAIN';
-        add_header Content-Type text/plain;
-    }
-
-    location /vless-ws {
-        proxy_pass http://unix:/tmp/vless_ws.sock;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "Upgrade";
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-    }
-}
-EOF
+    # Use a template to generate the Nginx configuration
+    export DOMAIN WEBSOCKET_PATH
+    envsubst < nginx-config.template > "$NGINX_CONFIG"
 
     # Enable the Nginx configuration
-    sudo ln -sf /etc/nginx/sites-available/xray /etc/nginx/sites-enabled/xray
-    sudo rm /etc/nginx/sites-enabled/default
+    sudo ln -sf "$NGINX_CONFIG" /etc/nginx/sites-enabled/xray
+    sudo rm -f /etc/nginx/sites-enabled/default
 
     echo "Nginx configuration completed."
 }
@@ -199,7 +95,8 @@ main() {
     echo "Starting Xray, Nginx, and Let's Encrypt SSL setup..."
 
     # Get the domain name from the user
-    read -p "Enter your domain name (e.g., example.com): " DOMAIN
+    read -p "Enter your subdomain (e.g., subdomain.example.com): " DOMAIN
+    validate_domain "$DOMAIN"
 
     # Call functions in sequence
     install_dependencies
@@ -210,7 +107,7 @@ main() {
     restart_services
 
     echo "Setup completed successfully!"
-    echo "Xray is running with VLESS + XTLS and WebSocket on port 443."
+    echo "Xray is running with VLESS + TLS and WebSocket on port 443."
     echo "You can access your server at https://$DOMAIN (Nginx is masking Xray)."
 }
 
