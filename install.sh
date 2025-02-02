@@ -73,7 +73,19 @@ install_letsencrypt() {
   echo "Installing Certbot..."
   apt-get install -y certbot python3-certbot-nginx
 
-  certbot --nginx -d "$DOMAIN" -m "$EMAIL" --agree-tos --no-interactive
+  echo "Stopping Nginx..."
+  systemctl stop nginx
+
+  echo "Generating SSL certificate..."
+  certbot --nginx -d "$DOMAIN" -m "$EMAIL" --agree-tos --force-renewal || {
+    echo "Error: Certbot failed. Please check the logs for more details."
+    systemctl start nginx # Restart Nginx even if Certbot fails
+    exit 1  # Exit the script if Certbot fails
+  }
+
+  echo "Starting Nginx..."
+  systemctl start nginx
+  echo "Certbot certificate generation successful."
 }
 
 # Function to configure Nginx for WebSocket proxy
