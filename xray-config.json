@@ -4,12 +4,9 @@
   },
   "dns": {
     "servers": [
-      "8.8.8.8",
-      "8.8.4.4",
       "https://1.1.1.1/dns-query",
-      "1.1.1.1",
-      "1.0.0.1",
-      "127.0.0.1"
+      "https://9.9.9.9/dns-query",
+      "https://dns.google/dns-query"
     ]
   },
   "routing": {
@@ -51,9 +48,6 @@
           {
             "path": "%%WSPATH%%",
             "dest": "@vless-ws"
-          },
-          {
-            "dest": 80
           }
         ]
       },
