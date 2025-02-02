@@ -143,7 +143,7 @@ apt install -y curl socat certbot haveged
 bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
 
 # Download config template
-TEMPLATE_URL="YOUR_GITHUB_RAW_URL_HERE"  # Replace with your actual template URL
+TEMPLATE_URL="https://github.com/0xlucyg/xrayconfig/raw/refs/heads/main/xray-config.json"  # Replace with your actual template URL
 curl -o /usr/local/etc/xray/config.json.template "$TEMPLATE_URL"
 
 # Replace placeholders in template
