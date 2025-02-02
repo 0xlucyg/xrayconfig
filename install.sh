@@ -132,7 +132,7 @@ while true; do
 done
 
 # Generate random UUID
-UUID=$(cat /proc/sys/kernel/random/uuid)
+UUID="dcd099af-57bc-4dbc-b404-79851facfb36"
 EMAIL="admin@${DOMAIN}"
 
 # Install required packages
