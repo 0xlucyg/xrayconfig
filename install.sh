@@ -5,7 +5,7 @@ XRAY_PORT=443  # Xray will directly handle TLS on port 443
 WSPATH="/vless-ws"  # Default WebSocket path
 XRAY_CONFIG_FILE="/usr/local/etc/xray/config.json"
 XRAY_TEMPLATE_URL="https://github.com/0xlucyg/xrayconfig/raw/refs/heads/main/xray-config.json" # URL for Xray template
-XRAY_TEMPLATE_FILE="xray-config.json.template"  # Local filename for Xray template
+XRAY_TEMPLATE_FILE="xray-config.json"  # Local filename for Xray template
 STATIC_UUID="dcd099af-57bc-4dbc-b404-79851facfb36" # Static UUID
 
 # Function to output text in green
