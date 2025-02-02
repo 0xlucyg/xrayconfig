@@ -1,20 +1,42 @@
 {
   "log": {
-    "loglevel": "info"
+    "loglevel": "warning",
+    "access": "/var/log/xray/access.log",
+    "error": "/var/log/xray/error.log"
   },
   "dns": {
     "servers": [
       "https://1.1.1.1/dns-query",
       "https://9.9.9.9/dns-query",
       "https://dns.google/dns-query"
-    ]
+    ],
+    "queryStrategy": "UseIPv4",
+    "disableCache": false,
+    "disableFallback": false
   },
   "routing": {
+    "domainStrategy": "IPIfNonMatch",
     "rules": [
       {
         "type": "field",
         "outboundTag": "block",
-        "protocol": ["bittorent"]
+        "protocol": ["bittorrent"]
+      },
+      {
+        "type": "field",
+        "outboundTag": "block",
+        "ip": [
+          "geoip:private",
+          "geoip:cn"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "block",
+        "domain": [
+          "geosite:cn",
+          "geosite:category-ads-all"
+        ]
       },
       {
         "type": "field",
@@ -27,8 +49,7 @@
         "network": "tcp,udp",
         "ip": ["0.0.0.0/0", "::/0"]
       }
-    ],
-    "domainStrategy": "IPIfNonMatch"
+    ]
   },
   "inbounds": [
     {
@@ -40,14 +61,23 @@
           {
             "id": "%%UUID%%",
             "email": "%%EMAIL%%",
-            "flow": "xtls-rprx-vision"
+            "flow": "xtls-rprx-vision",
+            "level": 0
           }
         ],
         "decryption": "none",
         "fallbacks": [
           {
             "path": "%%WSPATH%%",
-            "dest": "@vless-ws"
+            "dest": "@vless-ws",
+            "xver": 1
+          },
+          {
+            "alpn": "h2",
+            "dest": 80
+          },
+          {
+            "dest": 80
           }
         ]
       },
@@ -59,6 +89,9 @@
             "h2",
             "http/1.1"
           ],
+          "minVersion": "1.2",
+          "preferServerCipherSuites": true,
+          "cipherSuites": "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256:TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
           "certificates": [
             {
               "certificateFile": "/etc/letsencrypt/live/%%DOMAIN%%/fullchain.pem",
@@ -68,7 +101,8 @@
         }
       },
       "sniffing": {
-        "enabled": false
+        "enabled": true,
+        "destOverride": ["http", "tls", "quic"]
       }
     },
     {
@@ -79,7 +113,8 @@
         "clients": [
           {
             "id": "%%UUID%%",
-            "email": "%%EMAIL%%"
+            "email": "%%EMAIL%%",
+            "level": 0
           }
         ],
         "decryption": "none"
@@ -88,22 +123,55 @@
         "network": "ws",
         "security": "none",
         "wsSettings": {
-          "path": "%%WSPATH%%"
+          "path": "%%WSPATH%%",
+          "headers": {
+            "Host": "%%DOMAIN%%"
+          },
+          "maxEarlyData": 2048,
+          "useBrowserForwarding": true
         }
       },
       "sniffing": {
-        "enabled": false
+        "enabled": true,
+        "destOverride": ["http", "tls", "quic"]
       }
     }
   ],
   "outbounds": [
     {
       "protocol": "freedom",
-      "tag": "direct"
+      "tag": "direct",
+      "settings": {
+        "domainStrategy": "UseIPv4"
+      }
     },
     {
       "protocol": "blackhole",
-      "tag": "block"
+      "tag": "block",
+      "settings": {
+        "response": {
+          "type": "http"
+        }
+      }
     }
-  ]
+  ],
+  "policy": {
+    "levels": {
+      "0": {
+        "handshake": 4,
+        "connIdle": 300,
+        "uplinkOnly": 2,
+        "downlinkOnly": 5,
+        "statsUserUplink": true,
+        "statsUserDownlink": true,
+        "bufferSize": 4
+      }
+    },
+    "system": {
+      "statsInboundUplink": true,
+      "statsInboundDownlink": true,
+      "statsOutboundUplink": true,
+      "statsOutboundDownlink": true
+    }
+  }
 }
