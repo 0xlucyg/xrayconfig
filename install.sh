@@ -158,10 +158,10 @@ TEMPLATE_URL="https://github.com/0xlucyg/xrayconfig/raw/refs/heads/main/xray-con
 curl -o /usr/local/etc/xray/config.json.template "$TEMPLATE_URL"
 
 # Replace placeholders in template
-sed -i "s/%%DOMAIN%%/${DOMAIN}/g" /usr/local/etc/xray/config.json.template
-sed -i "s/%%EMAIL%%/${EMAIL}/g" /usr/local/etc/xray/config.json.template
-sed -i "s/%%WSPATH%%/${WSPATH}/g" /usr/local/etc/xray/config.json.template
-sed -i "s/%%UUID%%/${UUID}/g" /usr/local/etc/xray/config.json.template
+sed -i "s#%%DOMAIN%%#${DOMAIN}#g" /usr/local/etc/xray/config.json.template
+sed -i "s#%%EMAIL%%#${EMAIL}#g" /usr/local/etc/xray/config.json.template
+sed -i "s#%%WSPATH%%#${WSPATH}#g" /usr/local/etc/xray/config.json.template
+sed -i "s#%%UUID%%#${UUID}#g" /usr/local/etc/xray/config.json.template
 
 # Install SSL certificate
 certbot certonly --standalone --non-interactive --agree-tos --email "${EMAIL}" -d "${DOMAIN}"
