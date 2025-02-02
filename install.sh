@@ -48,8 +48,8 @@ install_xray() {
     jq -r '.inbounds[1].streamSettings.wsSettings.path = "'$WSPATH'"' | \
     jq -r '.inbounds[0].streamSettings.tlsSettings.certificates[0].certificateFile = "/etc/letsencrypt/live/$DOMAIN/fullchain.pem"' | \
     jq -r '.inbounds[0].streamSettings.tlsSettings.certificates[0].keyFile = "/etc/letsencrypt/live/$DOMAIN/privkey.pem"' | \
-    jq -r '.inbounds[0].port = '$XRAY_PORT'' | \
-    jq -r '.inbounds[0].fallbacks[1].dest = "'$NGINX_PORT'"' | \
+    jq -r '.inbounds[0].port = '"$XRAY_PORT"'' | \
+    jq -r '.inbounds[0].fallbacks[1].dest = '"$NGINX_PORT"'' | \
     jq -r '.inbounds[1].listen = "@vless-ws"' > $XRAY_CONFIG_FILE
 
 
