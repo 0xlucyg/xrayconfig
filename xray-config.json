@@ -64,6 +64,12 @@
           "alpn": [
             "h2",
             "http/1.1"
+          ],
+          "certificates": [
+            {
+              "certificateFile": "/etc/letsencrypt/live/%%DOMAIN%%/fullchain.pem",
+              "keyFile": "/etc/letsencrypt/live/%%DOMAIN%%/privkey.pem"
+            }
           ]
         }
       },
