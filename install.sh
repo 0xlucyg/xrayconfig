@@ -8,11 +8,22 @@ fi
 
 # Function to validate domain format
 validate_domain() {
-    if [[ $1 =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}$ ]]; then
-        return 0
-    else
-        return 1
+    # This regex allows multiple subdomain levels and various TLDs
+    if [[ $1 =~ ^([a-zA-Z0-9][a-zA-Z0-9-]*\.)+[a-zA-Z]{2,}$ ]]; then
+        # Check if domain length is valid (total length <= 253 characters)
+        if [ ${#1} -le 253 ]; then
+            # Check if each part is valid (length <= 63 characters)
+            local IFS='.'
+            read -ra ADDR <<< "$1"
+            for part in "${ADDR[@]}"; do
+                if [ ${#part} -gt 63 ]; then
+                    return 1
+                fi
+            done
+            return 0
+        fi
     fi
+    return 1
 }
 
 # Function to validate path format
