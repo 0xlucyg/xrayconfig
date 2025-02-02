@@ -72,8 +72,23 @@ install_xray() {
 
 # Function to install Nginx
 install_nginx() {
+  echo "Checking if Nginx is already installed..."
+
+  if command -v nginx &> /dev/null; then  # Check if nginx command exists
+    echo "Nginx is already installed."
+
+    # Check if Nginx is running and restart it to load config (optional)
+    if systemctl is-active --quiet nginx; then
+      echo "Nginx is running. Restarting to load new configuration (if any)..."
+      systemctl restart nginx
+    fi
+    return  # Exit the function early if Nginx is already installed
+  fi
+
   echo "Installing Nginx..."
   apt-get install -y nginx
+
+  echo "Nginx installed."
 }
 
 # Function to install and configure Let's Encrypt
@@ -85,7 +100,12 @@ install_letsencrypt() {
   systemctl stop nginx
 
   echo "Generating SSL certificate..."
-  certbot --nginx -d "$DOMAIN" -m "$EMAIL" --agree-tos --force-renewal || {
+
+  # Use certonly --standalone and specify certificate and key paths
+  certbot certonly --standalone -d "$DOMAIN" --non-interactive --agree-tos --email "admin@$DOMAIN" \
+    --cert-name "$DOMAIN" \
+    --cert-path "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" \
+    --key-path "/etc/letsencrypt/live/$DOMAIN/privkey.pem" || {
     echo "Error: Certbot failed. Please check the logs for more details."
     systemctl start nginx # Restart Nginx even if Certbot fails
     exit 1  # Exit the script if Certbot fails
@@ -106,7 +126,8 @@ configure_nginx_websocket() {
     sed "s/WSPATH/$WSPATH/g" > $NGINX_CONFIG_FILE.tmp
   mv $NGINX_CONFIG_FILE.tmp $NGINX_CONFIG_FILE
 
-  ln -s $NGINX_CONFIG_FILE $NGINX_CONFIG_FILE
+  ln -sf $NGINX_CONFIG_FILE /etc/nginx/sites-enabled/$DOMAIN
+  rm -f /etc/nginx/sites-enabled/default
 
   nginx -t  # Test Nginx configuration
 
