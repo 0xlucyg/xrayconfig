@@ -7,6 +7,10 @@ XRAY_CONFIG="/usr/local/etc/xray/config.json"
 NGINX_CONFIG="/etc/nginx/sites-available/xray"
 LOG_FILE="xray-setup.log"
 
+# GitHub raw URLs for templates
+XRAY_TEMPLATE_URL="https://raw.githubusercontent.com/0xlucyg/xrayconfig/refs/heads/main/xray-config.json"
+NGINX_TEMPLATE_URL="https://raw.githubusercontent.com/0xlucyg/xrayconfig/refs/heads/main/nginx-config.template"
+
 # Redirect output to log file
 exec > >(tee -a "$LOG_FILE") 2>&1
 
@@ -17,6 +21,17 @@ validate_domain() {
         echo "Error: Invalid domain name."
         exit 1
     fi
+}
+
+# Function to download templates from GitHub
+download_templates() {
+    echo "Downloading Xray config template..."
+    curl -s -o xray-config.json.template "$XRAY_TEMPLATE_URL" || { echo "Failed to download Xray template"; exit 1; }
+
+    echo "Downloading Nginx config template..."
+    curl -s -o nginx-config.template "$NGINX_TEMPLATE_URL" || { echo "Failed to download Nginx template"; exit 1; }
+
+    echo "Templates downloaded successfully."
 }
 
 # Function to update the system and install dependencies
@@ -42,6 +57,11 @@ configure_xray() {
     # Use a template to generate the Xray configuration
     export DOMAIN UUID WEBSOCKET_PATH
     envsubst < xray-config.json.template > "$XRAY_CONFIG"
+
+    # Add DNS servers to the Xray configuration
+    echo "Adding DNS servers to Xray configuration..."
+    sed -i '/"outbounds": \[/a \    {\n      "protocol": "dns",\n      "tag": "dns-out"\n    },' "$XRAY_CONFIG"
+    sed -i '/"routing": {/i \  "dns": {\n    "servers": [\n      "1.1.1.1",\n      "8.8.8.8",\n      "9.9.9.9"\n    ]\n  },' "$XRAY_CONFIG"
 
     echo "Xray configuration completed."
 }
@@ -97,6 +117,9 @@ main() {
     # Get the domain name from the user
     read -p "Enter your subdomain (e.g., subdomain.example.com): " DOMAIN
     validate_domain "$DOMAIN"
+
+    # Download templates from GitHub
+    download_templates
 
     # Call functions in sequence
     install_dependencies
