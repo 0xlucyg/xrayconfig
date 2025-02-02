@@ -26,10 +26,16 @@ validate_domain() {
 # Function to download templates from GitHub
 download_templates() {
     echo "Downloading Xray config template..."
-    curl -s -o xray-config.json.template "$XRAY_TEMPLATE_URL" || { echo "Failed to download Xray template"; exit 1; }
+    curl -s -o xray-config.json.template "$XRAY_TEMPLATE_URL" || {
+        echo "Failed to download Xray template"
+        exit 1
+    }
 
     echo "Downloading Nginx config template..."
-    curl -s -o nginx-config.template "$NGINX_TEMPLATE_URL" || { echo "Failed to download Nginx template"; exit 1; }
+    curl -s -o nginx-config.template "$NGINX_TEMPLATE_URL" || {
+        echo "Failed to download Nginx template"
+        exit 1
+    }
 
     echo "Templates downloaded successfully."
 }
@@ -56,12 +62,7 @@ configure_xray() {
 
     # Use a template to generate the Xray configuration
     export DOMAIN UUID WEBSOCKET_PATH
-    envsubst < xray-config.json.template > "$XRAY_CONFIG"
-
-    # Add DNS servers to the Xray configuration
-    echo "Adding DNS servers to Xray configuration..."
-    sed -i '/"outbounds": \[/a \    {\n      "protocol": "dns",\n      "tag": "dns-out"\n    },' "$XRAY_CONFIG"
-    sed -i '/"routing": {/i \  "dns": {\n    "servers": [\n      "1.1.1.1",\n      "8.8.8.8",\n      "9.9.9.9"\n    ]\n  },' "$XRAY_CONFIG"
+    envsubst <xray-config.json.template >"$XRAY_CONFIG"
 
     echo "Xray configuration completed."
 }
@@ -93,7 +94,7 @@ configure_nginx() {
 
     # Use a template to generate the Nginx configuration
     export DOMAIN WEBSOCKET_PATH
-    envsubst < nginx-config.template > "$NGINX_CONFIG"
+    envsubst <nginx-config.template >"$NGINX_CONFIG"
 
     # Enable the Nginx configuration
     sudo ln -sf "$NGINX_CONFIG" /etc/nginx/sites-enabled/xray
