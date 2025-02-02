@@ -46,11 +46,12 @@ install_xray() {
   # This part is ALWAYS executed, whether Xray was already installed or not
   EMAIL="admin@$DOMAIN" # Email set to admin@DOMAIN
 
-  # Use the template and replace the UUID, email, domain, ws path, and Xray port.
-  sed "s/%%UUID%%/$STATIC_UUID/g" $XRAY_TEMPLATE_FILE | \
-    sed "s/%%EMAIL%%/$EMAIL/g" | \
-    sed "s/%%DOMAIN%%/$DOMAIN/g" | \
-    sed "s/%%WSPATH%%/$WSPATH/g" > $XRAY_CONFIG_FILE
+  # Use the template and replace the UUID, email, domain and ws path.
+  # Use sed with # as delimiter to replace placeholders
+  sed "s#%%UUID%%#$STATIC_UUID#g" $XRAY_TEMPLATE_FILE | \
+    sed "s#%%EMAIL%%#$EMAIL#g" | \
+    sed "s#%%DOMAIN%%#$DOMAIN#g" | \
+    sed "s#%%WSPATH%%#$WSPATH#g" > $XRAY_CONFIG_FILE
 
   green_echo "UUID: $STATIC_UUID"
   green_echo "Email: $EMAIL"
