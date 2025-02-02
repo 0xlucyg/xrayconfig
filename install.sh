@@ -12,22 +12,32 @@ NGINX_TEMPLATE_FILE="nginx-config.template" # Local filename for Nginx template
 NGINX_CONFIG_FILE="/etc/nginx/sites-available/$DOMAIN" # Dynamic, will be set later
 STATIC_UUID="dcd099af-57bc-4dbc-b404-79851facfb36" # Static UUID
 
+# Function to output text in green
+green_echo() {
+  echo -e "\e[32m$1\e[0m"  # Green text: \e[32m, Reset: \e[0m
+}
+
+# Function to output text in red (for errors)
+red_echo() {
+  echo -e "\e[31m$1\e[0m"  # Red text: \e[31m, Reset: \e[0m
+}
+
 # Run apt-get update ONCE at the beginning of the script, and then clear the screen
 apt-get update && clear
 
 # Function to download the templates
 download_templates() {
-  echo "Downloading Xray template..."
+  green_echo "Downloading Xray template..."
   curl -sSL "$XRAY_TEMPLATE_URL" > "$XRAY_TEMPLATE_FILE"
   if [[ ! -f "$XRAY_TEMPLATE_FILE" ]]; then
-    echo "Error: Failed to download Xray template."
+    red_echo "Error: Failed to download Xray template."
     exit 1
   fi
 
-  echo "Downloading Nginx template..."
+  green_echo "Downloading Nginx template..."
   curl -sSL "$NGINX_TEMPLATE_URL" > "$NGINX_TEMPLATE_FILE"
   if [[ ! -f "$NGINX_TEMPLATE_FILE" ]]; then
-    echo "Error: Failed to download Nginx template."
+    red_echo "Error: Failed to download Nginx template."
     exit 1
   fi
 }
@@ -35,7 +45,7 @@ download_templates() {
 
 # Function to install Xray using xray-install
 install_xray() {
-  echo "Installing Xray..."
+  green_echo "Installing Xray..."
   bash <(curl -Ls https://raw.githubusercontent.com/XTLS/xray-install/master/install-release.sh)
 
   EMAIL="admin@$DOMAIN" # Email set to admin@DOMAIN
@@ -55,70 +65,67 @@ install_xray() {
     jq -r '.inbounds[0].fallbacks[1].dest = '"$NGINX_PORT"'' | \
     jq -r '.inbounds[1].listen = "@vless-ws"' > $XRAY_CONFIG_FILE
 
-  echo "UUID: $STATIC_UUID"
-  echo "Email: $EMAIL"
-  echo "WebSocket Path: $WSPATH"
-  echo "Xray Port: $XRAY_PORT"
-  echo "Fallback Port: $NGINX_PORT"
+  green_echo "UUID: $STATIC_UUID"
+  green_echo "Email: $EMAIL"
+  green_echo "WebSocket Path: $WSPATH"
+  green_echo "Xray Port: $XRAY_PORT"
+  green_echo "Fallback Port: $NGINX_PORT"
 
   # Allow the loopback port in ufw
   if command -v ufw &> /dev/null; then
     sudo ufw allow from 127.0.0.1 to 127.0.0.1 port "$XRAY_PORT"
-    echo "ufw rule added for loopback port $XRAY_PORT"
+    green_echo "ufw rule added for loopback port $XRAY_PORT"
   else
-    echo "ufw is not installed. Skipping firewall rule."
+    green_echo "ufw is not installed. Skipping firewall rule."
   fi
 }
 
-# Function to install Nginx
 install_nginx() {
-  echo "Checking if Nginx is already installed..."
+  green_echo "Checking if Nginx is already installed..."
 
   if command -v nginx &> /dev/null; then  # Check if nginx command exists
-    echo "Nginx is already installed."
+    green_echo "Nginx is already installed."
 
     # Check if Nginx is running and restart it to load config (optional)
     if systemctl is-active --quiet nginx; then
-      echo "Nginx is running. Restarting to load new configuration (if any)..."
+      green_echo "Nginx is running. Restarting to load new configuration (if any)..."
       systemctl restart nginx
     fi
     return  # Exit the function early if Nginx is already installed
   fi
 
-  echo "Installing Nginx..."
+  green_echo "Installing Nginx..."
   apt-get install -y nginx
 
-  echo "Nginx installed."
+  green_echo "Nginx installed."
 }
 
-# Function to install and configure Let's Encrypt
 install_letsencrypt() {
-  echo "Installing Certbot..."
+  green_echo "Installing Certbot..."
   apt-get install -y certbot python3-certbot-nginx
 
-  echo "Stopping Nginx..."
+  green_echo "Stopping Nginx..."
   systemctl stop nginx
 
-  echo "Generating SSL certificate..."
+  green_echo "Generating SSL certificate..."
 
   # Use certonly --standalone and specify certificate and key paths
   certbot certonly --standalone -d "$DOMAIN" --non-interactive --agree-tos --email "admin@$DOMAIN" \
     --cert-name "$DOMAIN" \
     --cert-path "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" \
     --key-path "/etc/letsencrypt/live/$DOMAIN/privkey.pem" || {
-    echo "Error: Certbot failed. Please check the logs for more details."
+    red_echo "Error: Certbot failed. Please check the logs for more details."
     systemctl start nginx # Restart Nginx even if Certbot fails
     exit 1  # Exit the script if Certbot fails
   }
 
-  echo "Starting Nginx..."
+  green_echo "Starting Nginx..."
   systemctl start nginx
-  echo "Certbot certificate generation successful."
+  green_echo "Certbot certificate generation successful."
 }
 
-# Function to configure Nginx for WebSocket proxy
 configure_nginx_websocket() {
-  echo "Configuring Nginx for WebSocket..."
+  green_echo "Configuring Nginx for WebSocket..."
 
   # Use the template and replace the domain, Xray port, and WebSocket path
   sed "s/YOUR_DOMAIN/$DOMAIN/g" $NGINX_TEMPLATE_FILE | \
@@ -132,17 +139,17 @@ configure_nginx_websocket() {
   # Remove the default site configuration (if it exists)
   if [ -f /etc/nginx/sites-enabled/default ]; then
     rm -f /etc/nginx/sites-enabled/default
-    echo "Removed default Nginx site configuration."
+    green_echo "Removed default Nginx site configuration."
   fi
 
   nginx -t  # Test Nginx configuration
 
   # Check if Nginx is already running
   if systemctl is-active --quiet nginx; then
-    echo "Nginx is already running. Restarting..."
+    green_echo "Nginx is already running. Restarting..."
     systemctl restart nginx
   else
-    echo "Nginx is not running. Starting..."
+    green_echo "Nginx is not running. Starting..."
     systemctl start nginx
   fi
 }
@@ -162,19 +169,19 @@ install_nginx
 install_letsencrypt
 configure_nginx_websocket
 
-echo "Installation complete!"
+green_echo "Installation complete!"
 
 # Print all information at the end
-echo "----------------------------------------"
-echo "Domain: $DOMAIN"
-echo "Email: admin@$DOMAIN"
-echo "UUID: $STATIC_UUID"
-echo "WebSocket Path: $WSPATH"
-echo "Xray Port: $XRAY_PORT"
-echo "Nginx Port: $NGINX_PORT"
-echo "Xray Config File: $XRAY_CONFIG_FILE"
-echo "Nginx Config File: $NGINX_CONFIG_FILE"
-echo "----------------------------------------"
-echo "Xray is running (internal)."
-echo "Nginx is listening on port 80 and 443."
-echo "Remember to replace 'your_domain.com' with your actual domain if you haven't already."
+green_echo "----------------------------------------"
+green_echo "Domain: $DOMAIN"
+green_echo "Email: admin@$DOMAIN"
+green_echo "UUID: $STATIC_UUID"
+green_echo "WebSocket Path: $WSPATH"
+green_echo "Xray Port: $XRAY_PORT"
+green_echo "Nginx Port: $NGINX_PORT"
+green_echo "Xray Config File: $XRAY_CONFIG_FILE"
+green_echo "Nginx Config File: $NGINX_CONFIG_FILE"
+green_echo "----------------------------------------"
+green_echo "Xray is running (internal)."
+green_echo "Nginx is listening on port 80 and 443."
+green_echo "Remember to replace 'your_domain.com' with your actual domain if you haven't already."
