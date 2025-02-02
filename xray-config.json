@@ -1,35 +1,59 @@
 {
+  "log": {
+    "loglevel": "info"
+  },
   "dns": {
     "servers": [
-      "1.1.1.1",
       "8.8.8.8",
       "8.8.4.4",
       "https://1.1.1.1/dns-query",
+      "1.1.1.1",
       "1.0.0.1",
       "127.0.0.1"
     ]
+  },
+  "routing": {
+    "rules": [
+      {
+        "type": "field",
+        "outboundTag": "block",
+        "protocol": ["bittorent"]
+      },
+      {
+        "type": "field",
+        "inboundTag": ["vless_tls", "vless_ws"],
+        "outboundTag": "direct"
+      },
+      {
+        "type": "field",
+        "outboundTag": "direct",
+        "network": "tcp,udp",
+        "ip": ["0.0.0.0/0", "::/0"]
+      }
+    ],
+    "domainStrategy": "IPIfNonMatch"
   },
   "inbounds": [
     {
       "port": 443,
       "protocol": "vless",
+      "tag": "vless_tls",
       "settings": {
         "clients": [
           {
-            "id": "$UUID",
+            "id": "%%UUID%%",
+            "email": "%%EMAIL%%",
             "flow": "xtls-rprx-vision"
           }
         ],
         "decryption": "none",
         "fallbacks": [
           {
-            "path": "$WEBSOCKET_PATH",
-            "dest": "@vless_ws",
-            "xver": 1
+            "path": "%%WSPATH%%",
+            "dest": "@vless-ws"
           },
           {
-            "dest": 80,
-            "xver": 1
+            "dest": 80
           }
         ]
       },
@@ -37,84 +61,49 @@
         "network": "tcp",
         "security": "tls",
         "tlsSettings": {
-          "serverName": "$DOMAIN",
-          "alpn": ["h2", "http/1.1"],
-          "certificates": [
-            {
-              "certificateFile": "/etc/letsencrypt/live/$DOMAIN/fullchain.pem",
-              "keyFile": "/etc/letsencrypt/live/$DOMAIN/privkey.pem"
-            }
+          "alpn": [
+            "h2",
+            "http/1.1"
           ]
         }
       },
       "sniffing": {
-        "enabled": true,
-        "destOverride": ["http", "tls"]
-      },
-      "tag": "inbound-vless"
+        "enabled": false
+      }
     },
     {
-      "listen": "@vless_ws",
+      "listen": "@vless-ws",
       "protocol": "vless",
+      "tag": "vless_ws",
       "settings": {
         "clients": [
           {
-            "id": "$UUID"
+            "id": "%%UUID%%",
+            "email": "%%EMAIL%%"
           }
         ],
         "decryption": "none"
       },
       "streamSettings": {
         "network": "ws",
+        "security": "none",
         "wsSettings": {
-          "path": "$WEBSOCKET_PATH"
+          "path": "%%WSPATH%%"
         }
       },
       "sniffing": {
-        "enabled": true,
-        "destOverride": ["http", "tls"]
-      },
-      "tag": "inbound-ws"
+        "enabled": false
+      }
     }
   ],
   "outbounds": [
     {
       "protocol": "freedom",
-      "settings": {},
-      "mux": {
-        "enabled": true,
-        "concurrency": 8
-      },
-      "streamSettings": {
-        "sockopt": {
-          "tcpFastOpen": true
-        }
-      },
       "tag": "direct"
     },
     {
       "protocol": "blackhole",
-      "tag": "blocked"
+      "tag": "block"
     }
-  ],
-  "routing": {
-    "domainStrategy": "AsIs",
-    "rules": [
-      {
-        "type": "field",
-        "ip": ["geoip:private"],
-        "outboundTag": "blocked"
-      },
-      {
-        "type": "field",
-        "domain": ["geosite:category-ads"],
-        "outboundTag": "blocked"
-      },
-      {
-        "type": "field",
-        "inboundTag": ["inbound-vless", "inbound-ws"],
-        "outboundTag": "direct"
-      }
-    ]
-  }
+  ]
 }
