@@ -12,6 +12,9 @@ NGINX_TEMPLATE_FILE="nginx-config.template" # Local filename for Nginx template
 NGINX_CONFIG_FILE="/etc/nginx/sites-available/$DOMAIN" # Dynamic, will be set later
 STATIC_UUID="dcd099af-57bc-4dbc-b404-79851facfb36" # Static UUID
 
+# Run apt-get update ONCE at the beginning of the script, and then clear the screen
+apt-get update && clear
+
 # Function to download the templates
 download_templates() {
   echo "Downloading Xray template..."
@@ -37,7 +40,7 @@ install_xray() {
 
   EMAIL="admin@$DOMAIN" # Email set to admin@DOMAIN
 
-  apt-get update && apt-get install -y jq
+  apt-get install -y jq  # jq install
 
   # Use the template and replace the UUID, email, domain, ws path, and Xray port.
   jq -r '.inbounds[0].settings.clients[0].id = "'$STATIC_UUID'"' $XRAY_TEMPLATE_FILE | \
@@ -52,9 +55,14 @@ install_xray() {
     jq -r '.inbounds[0].fallbacks[1].dest = '"$NGINX_PORT"'' | \
     jq -r '.inbounds[1].listen = "@vless-ws"' > $XRAY_CONFIG_FILE
 
+  echo "UUID: $STATIC_UUID"
+  echo "Email: $EMAIL"
+  echo "WebSocket Path: $WSPATH"
+  echo "Xray Port: $XRAY_PORT"
+  echo "Fallback Port: $NGINX_PORT"
 
   # Allow the loopback port in ufw
-  if command -v ufw &> /dev/null; then # Check if ufw is installed
+  if command -v ufw &> /dev/null; then
     sudo ufw allow from 127.0.0.1 to 127.0.0.1 port "$XRAY_PORT"
     echo "ufw rule added for loopback port $XRAY_PORT"
   else
@@ -65,7 +73,7 @@ install_xray() {
 # Function to install Nginx
 install_nginx() {
   echo "Installing Nginx..."
-  apt-get update && apt-get install -y nginx
+  apt-get install -y nginx
 }
 
 # Function to install and configure Let's Encrypt
