@@ -126,8 +126,14 @@ configure_nginx_websocket() {
     sed "s/WSPATH/$WSPATH/g" > $NGINX_CONFIG_FILE.tmp
   mv $NGINX_CONFIG_FILE.tmp $NGINX_CONFIG_FILE
 
+  # Create or update the symbolic link in sites-enabled
   ln -sf $NGINX_CONFIG_FILE /etc/nginx/sites-enabled/$DOMAIN
-  rm -f /etc/nginx/sites-enabled/default
+
+  # Remove the default site configuration (if it exists)
+  if [ -f /etc/nginx/sites-enabled/default ]; then
+    rm -f /etc/nginx/sites-enabled/default
+    echo "Removed default Nginx site configuration."
+  fi
 
   nginx -t  # Test Nginx configuration
 
