@@ -128,9 +128,9 @@ configure_nginx_websocket() {
   green_echo "Configuring Nginx for WebSocket..."
 
   # Use the template and replace the domain, Xray port, and WebSocket path
-  sed "s/YOUR_DOMAIN/$DOMAIN/g" $NGINX_TEMPLATE_FILE | \
-    sed "s/XRAY_PORT/$XRAY_PORT/g" | \
-    sed "s/WSPATH/$WSPATH/g" > $NGINX_CONFIG_FILE.tmp
+  sed "s#YOUR_DOMAIN#$DOMAIN#g" $NGINX_TEMPLATE_FILE | \
+    sed "s#XRAY_PORT#$XRAY_PORT#g" | \
+    sed "s#WSPATH#$WSPATH#g" > $NGINX_CONFIG_FILE.tmp
   mv $NGINX_CONFIG_FILE.tmp $NGINX_CONFIG_FILE
 
   # Create or update the symbolic link in sites-enabled
